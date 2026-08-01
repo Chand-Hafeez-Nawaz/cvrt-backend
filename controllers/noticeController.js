@@ -225,35 +225,41 @@ async (req, res) => {
     // STUDENT / FACULTY
     // =====================================
 
-    else {
+    // =====================================
+// STUDENT / FACULTY
+// =====================================
 
-      notices =
-        await Notice.find({
+else {
 
-          visibility: "PUBLIC",
+  console.log("Role:", role);
+  console.log("Department received:", department);
 
-          $or: [
+  let departments = [department];
 
-            {
-              department
-            },
+  if (department === "AIML") {
+    departments.push("CSE");
+  }
 
-            {
-              department: "ALL"
-            }
+  console.log("Searching departments:", departments);
 
-          ]
-
-        })
-
-        .sort({
-
-          isPinned: -1,
-          createdAt: -1
-
-        });
-
+  notices = await Notice.find({
+    visibility: "PUBLIC",
+    department: {
+      $in: [...departments, "ALL"]
     }
+  }).sort({
+    isPinned: -1,
+    createdAt: -1
+  });
+
+  console.log(
+    "Notices found:",
+    notices.map(n => ({
+      title: n.title,
+      department: n.department
+    }))
+  );
+}
 
     res.status(200).json({
 
@@ -291,31 +297,23 @@ async (req, res) => {
     const { department } =
       req.params;
 
-    const notices =
-      await Notice.find({
+    let departments = [department];
 
-        visibility: "PUBLIC",
+// AIML students should also receive CSE notices
+if (department === "AIML") {
+  departments.push("CSE");
+}
 
-        $or: [
-
-          {
-            department
-          },
-
-          {
-            department: "ALL"
-          }
-
-        ]
-
-      })
-
-      .sort({
-
-        isPinned: -1,
-        createdAt: -1
-
-      });
+const notices = await Notice.find({
+  visibility: "PUBLIC",
+  department: {
+    $in: [...departments, "ALL"]
+  }
+})
+.sort({
+  isPinned: -1,
+  createdAt: -1
+});
 
     res.status(200).json({
 

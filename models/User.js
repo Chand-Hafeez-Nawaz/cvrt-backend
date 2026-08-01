@@ -8,13 +8,26 @@ const UserSchema = new mongoose.Schema({
 
   name: String,
 
+  email: {
+    type: String,
+    required:true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+  },
+
   password: String,
 
   role: String,
 
   department: String,
 
-  course: String
+  course: String,
+
+  mustChangePassword: {
+    type: Boolean,
+    default: false,
+  }
 
 }, { timestamps: true });
 

@@ -1,6 +1,29 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const Faculty = require("../models/Faculty");
+const sendEmail = require("../utils/sendEmail");
+
+
+
+// ======================================
+// GENERATE TEMP PASSWORD
+// ======================================
+
+function generateTempPassword(length = 8) {
+  const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+  let password = "";
+
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(
+      Math.floor(Math.random() * chars.length)
+    );
+  }
+
+  return password;
+}
+
 // ======================================
 // REGISTER
 // ======================================
@@ -12,10 +35,13 @@ exports.register = async (req, res) => {
     let {
       rollNumber,
       name,
+      email,
       password,
       secretCode,
       department
     } = req.body;
+
+    console.log("Request Body:", req.body);
 
     // =========================
     // SECRET CODE VALIDATION
@@ -36,7 +62,7 @@ exports.register = async (req, res) => {
     // =========================
 
     if (
-      /^\d{2}9B1A(01|02|03|04|05|39)[A-Z0-9]+$/i.test(
+      /^\d{2}(9B1A|9B5A)(01|02|03|04|05|39)[A-Z0-9]+$/i.test(
         rollNumber
       )
     ) {
@@ -99,6 +125,17 @@ exports.register = async (req, res) => {
 
     }
 
+
+    const existingEmail = await User.findOne({
+  email
+  });
+
+  if (existingEmail) {
+     return res.status(400).json({
+      message: "Email already registered"
+      });
+  }
+
     // =========================
     // HASH PASSWORD
     // =========================
@@ -114,6 +151,7 @@ exports.register = async (req, res) => {
 
       rollNumber,
       name,
+      email,
       password: hashedPassword,
       role: "STUDENT",
       department,
@@ -131,6 +169,7 @@ exports.register = async (req, res) => {
       rollNumber: user.rollNumber,
       username: user.username,
       name: user.name,
+      email: user.email,
       role: user.role,
       department: user.department,
       course: user.course
@@ -244,15 +283,40 @@ else if (rollNumber) {
 
     if (!isMatch) {
 
-      return res.status(401).json({
-        message: "Invalid Password"
-      });
+  return res.status(401).json({
+    message: "Invalid Password"
+  });
 
+}
+
+// =========================
+// TEMP PASSWORD CHECK
+// =========================
+
+if (user.mustChangePassword) {
+
+  return res.status(200).json({
+
+    success: true,
+    message: "Temporary password detected",
+    mustChangePassword: true,
+
+    user: {
+      rollNumber: user.rollNumber || null,
+      phone: user.phone || null,
+      name: user.name,
+      role: user.role,
     }
 
-    // =========================
-    // JWT TOKEN
-    // =========================
+  });
+
+}
+
+console.log("mustChangePassword:", user.mustChangePassword);
+
+// =========================
+// JWT TOKEN
+// =========================
 
     const jwt = require("jsonwebtoken");
 
@@ -285,7 +349,8 @@ else if (rollNumber) {
   role: user.role,
   department: user.department,
   course: user.course || null,
-  designation: user.designation || null
+  designation: user.designation || null,
+  mustChangePassword: user.mustChangePassword || null
 
 };
 
@@ -304,6 +369,188 @@ else if (rollNumber) {
 
     res.status(500).json({
       message: "Server Error"
+    });
+
+  }
+
+};
+
+// ======================================
+//FORGOT PASSWORD
+// ======================================
+
+exports.forgotPassword = async (req, res) => {
+  try {
+
+    const { rollNumber, phone, email } = req.body;
+
+    let user;
+
+    if (rollNumber) {
+      user = await User.findOne({
+        rollNumber,
+        email
+      });
+    } else if (phone) {
+      user = await Faculty.findOne({
+        phone,
+        email
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Roll Number or Phone is required"
+      });
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid credentials"
+      });
+    }
+
+    // Generate temp password
+    const tempPassword = generateTempPassword();
+
+    user.password = await bcrypt.hash(tempPassword, 10);
+    user.mustChangePassword = true;
+
+    await user.save();
+
+    await sendEmail(
+      user.email,
+      user.name,
+      "CVRT Portal - Password Reset",
+      `
+      <h2>CVRT Portal Password Reset</h2>
+      <p>Hello <b>${user.name}</b>,</p>
+      <p>Your temporary password is:</p>
+      <h2>${tempPassword}</h2>
+      <p>Please log in and change your password immediately.</p>
+      `
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Temporary password has been sent to your registered email."
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error"
+    });
+  }
+};
+
+// ======================================
+// CHANGE PASSWORD
+// ======================================
+
+// ======================================
+// CHANGE PASSWORD
+// ======================================
+
+exports.changePassword = async (req, res) => {
+
+  try {
+
+    const { rollNumber, phone, currentPassword, newPassword } = req.body;
+
+    let user;
+
+    // =========================
+    // STUDENT
+    // =========================
+
+    if (rollNumber) {
+
+      user = await User.findOne({ rollNumber });
+
+    }
+
+    // =========================
+    // FACULTY
+    // =========================
+
+    else if (phone) {
+
+      user = await Faculty.findOne({ phone });
+
+    }
+
+    // =========================
+    // INVALID REQUEST
+    // =========================
+
+    else {
+
+      return res.status(400).json({
+        success: false,
+        message: "Roll Number or Phone is required"
+      });
+
+    }
+
+    // =========================
+    // USER NOT FOUND
+    // =========================
+
+    if (!user) {
+
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+
+    }
+
+    // =========================
+    // CHECK CURRENT PASSWORD
+    // =========================
+
+    const isMatch = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!isMatch) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect"
+      });
+
+    }
+
+    // =========================
+    // UPDATE PASSWORD
+    // =========================
+
+    user.password = await bcrypt.hash(newPassword, 10);
+
+    user.mustChangePassword = false;
+
+    await user.save();
+
+    return res.status(200).json({
+
+      success: true,
+      message: "Password changed successfully"
+
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    return res.status(500).json({
+
+      success: false,
+      message: "Server Error"
+
     });
 
   }

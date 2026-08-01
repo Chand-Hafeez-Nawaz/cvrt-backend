@@ -16,7 +16,8 @@ const {
   getComplaints,
   getDepartmentComplaints,
   updateComplaintStatus,
-  getStudentComplaints
+  getStudentComplaints,
+  getFacultyComplaints
 
 } = require(
   "../controllers/complaintController"
@@ -141,11 +142,23 @@ router.put(
 
   roleMiddleware(
     "HOD",
-    "PRINCIPAL"
+    "PRINCIPAL",
+    "FACULTY"
   ),
 
   updateComplaintStatus
 
+);
+
+
+// =====================================
+// FACULTY COMPLAINTS
+// =====================================
+
+router.get(
+  "/faculty/:facultyId",
+  authMiddleware,
+  getFacultyComplaints
 );
 
 module.exports = router;

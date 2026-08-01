@@ -10,16 +10,22 @@ async (req, res) => {
 
   try {
 
-    const {
+    console.log("BODY:", req.body);
 
-      studentName,
-      rollNumber,
-      department,
-      category,
-      complaintText
+const {
+  studentName,
+  rollNumber,
+  department,
+  category,
+  complaintText,
+  complaintTo,
+  facultyId,
+  facultyName
+} = req.body;
 
-    } = req.body;
-
+console.log("complaintTo =", complaintTo);
+console.log("facultyId =", facultyId);
+console.log("facultyName =", facultyName);
     // =====================
     // FILE
     // =====================
@@ -38,18 +44,21 @@ async (req, res) => {
     // CREATE
     // =====================
 
-    const complaint =
+    console.log("Request Body:", req.body);
 
-      await Complaint.create({
+    const complaint = await Complaint.create({
+      studentName,
+      rollNumber,
+      department,
 
-        studentName,
-        rollNumber,
-        department,
-        category,
-        complaintText,
-        fileUrl
+      complaintTo: complaintTo || "PRINCIPAL_HOD",
+      facultyId: facultyId || null,
+      facultyName: facultyName || "",
 
-      });
+      category,
+      complaintText,
+      fileUrl
+    });
 
     res.status(201).json({
 
@@ -86,15 +95,9 @@ async (req, res) => {
 
   try {
 
-    const complaints =
-
-      await Complaint.find()
-
-      .sort({
-
-        createdAt: -1
-
-      });
+    const complaints = await Complaint.find({
+  complaintTo: "PRINCIPAL_HOD",
+}).sort({ createdAt: -1 });
 
     res.status(200).json({
 
@@ -131,19 +134,10 @@ async (req, res) => {
     const { department } =
       req.params;
 
-    const complaints =
-
-      await Complaint.find({
-
-        department
-
-      })
-
-      .sort({
-
-        createdAt: -1
-
-      });
+    const complaints = await Complaint.find({
+  department,
+  complaintTo: "PRINCIPAL_HOD",
+}).sort({ createdAt: -1 });
 
     res.status(200).json({
 
@@ -274,6 +268,40 @@ async (req, res) => {
 
       message: "Server Error"
 
+    });
+
+  }
+
+};
+
+// =====================================
+// FACULTY COMPLAINTS
+// =====================================
+
+exports.getFacultyComplaints = async (req, res) => {
+
+  try {
+
+    const { facultyId } = req.params;
+
+    const complaints = await Complaint.find({
+      complaintTo: "FACULTY",
+      facultyId
+    }).sort({
+      createdAt: -1
+    });
+
+    res.status(200).json({
+      success: true,
+      complaints
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      message: "Server Error"
     });
 
   }

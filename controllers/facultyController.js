@@ -16,6 +16,7 @@ async (req, res) => {
     const {
       name,
       phone,
+      email,
       password,
       designation,
       department,
@@ -40,6 +41,23 @@ async (req, res) => {
 
     }
 
+    const existingEmail =
+  await Faculty.findOne({
+    email,
+  });
+
+  if (existingEmail) {
+
+    return res.status(400).json({
+
+      success: false,
+
+      message: "Email already registered",
+
+    });
+
+  }
+
     const hashedPassword =
       await bcrypt.hash(
         password,
@@ -52,6 +70,8 @@ async (req, res) => {
         name,
 
         phone,
+
+        email,
 
         password:
           hashedPassword,
@@ -104,12 +124,20 @@ async (req, res) => {
     const { department } =
       req.params;
 
-    const faculty =
-      await Faculty.find({
+    let departments = [department];
 
-        department,
+// CSE and AIML share faculty
+if (department === "CSE") {
+  departments.push("AIML");
+}
 
-      }).select("-password");
+if (department === "AIML") {
+  departments.push("CSE");
+}
+
+const faculty = await Faculty.find({
+  department: { $in: departments }
+}).select("-password");
 
     res.status(200).json({
 

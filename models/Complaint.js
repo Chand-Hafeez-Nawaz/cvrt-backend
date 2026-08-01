@@ -31,6 +31,28 @@ new mongoose.Schema({
 
   },
 
+
+  // =====================
+// COMPLAINT RECEIVER
+// =====================
+
+complaintTo: {
+  type: String,
+  enum: ["PRINCIPAL_HOD", "FACULTY"],
+  default: "PRINCIPAL_HOD"
+},
+
+facultyId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Faculty",
+  default: null
+},
+
+facultyName: {
+  type: String,
+  default: ""
+},
+
   // =====================
   // CATEGORY
   // =====================

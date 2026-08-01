@@ -10,6 +10,15 @@ const facultySchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
+      unique: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
 
     password: {
@@ -36,11 +45,17 @@ const facultySchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   }
 );
+
 
 module.exports = mongoose.model(
   "Faculty",
