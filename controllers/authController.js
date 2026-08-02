@@ -391,11 +391,16 @@ exports.forgotPassword = async (req, res) => {
         rollNumber,
         email
       });
-    } else if (phone) {
+    } 
+
+    else if (phone) {
+      console.log("Phone:", phone);
+      console.log("Email:", email);
       user = await Faculty.findOne({
         phone,
         email
       });
+      console.log("User Found:", user);
     } else {
       return res.status(400).json({
         success: false,
@@ -418,6 +423,8 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
 
+    console.log("Sending email to:", user.email);
+
     await sendEmail(
       user.email,
       user.name,
@@ -431,6 +438,7 @@ exports.forgotPassword = async (req, res) => {
       `
     );
 
+    console.log("Email sent successfully");
     return res.status(200).json({
       success: true,
       message: "Temporary password has been sent to your registered email."
@@ -445,9 +453,6 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// ======================================
-// CHANGE PASSWORD
-// ======================================
 
 // ======================================
 // CHANGE PASSWORD
