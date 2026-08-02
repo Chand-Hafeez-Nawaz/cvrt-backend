@@ -1,48 +1,36 @@
-const nodemailer = require("nodemailer");
+const SibApiV3Sdk = require("sib-api-v3-sdk");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true only for port 465
-  requireTLS: true,
+const client = SibApiV3Sdk.ApiClient.instance;
 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+const apiKey = client.authentications["api-key"];
+apiKey.apiKey = process.env.BREVO_API_KEY;
 
-  connectionTimeout: 60000,
-  greetingTimeout: 60000,
-  socketTimeout: 60000,
-
-  tls: {
-    rejectUnauthorized: false,
-    minVersion: "TLSv1.2",
-  },
-});
+const emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 const sendEmail = async (toEmail, toName, subject, htmlContent) => {
   try {
-    // Verify SMTP connection
-    await transporter.verify();
-    console.log("✅ SMTP Server Connected");
+    await emailApi.sendTransacEmail({
+      sender: {
+        email: process.env.EMAIL_USER,
+        name: process.env.SENDER_NAME,
+      },
 
-    // Send mail
-    const info = await transporter.sendMail({
-      from: `"${process.env.SENDER_NAME}" <${process.env.EMAIL_USER}>`,
-      to: toEmail,
-      subject,
-      html: htmlContent,
+      to: [
+        {
+          email: toEmail,
+          name: toName,
+        },
+      ],
+
+      subject: subject,
+
+      htmlContent: htmlContent,
     });
 
     console.log("✅ Email sent successfully");
-    console.log("Message ID:", info.messageId);
-
-    return info;
   } catch (err) {
-    console.error("❌ Mail Error:");
-    console.error(err);
-
+    console.log("❌ Brevo Error:");
+    console.log(err.response?.body || err);
     throw err;
   }
 };
