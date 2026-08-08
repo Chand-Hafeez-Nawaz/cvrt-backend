@@ -561,3 +561,95 @@ exports.changePassword = async (req, res) => {
   }
 
 };
+
+// ======================================
+// SAVE EXPO PUSH TOKEN
+// ======================================
+
+exports.savePushToken = async (req, res) => {
+
+  try {
+
+    const userId = req.user.id;
+
+    const userRole = req.user.role;
+
+    const { expoPushToken } = req.body;
+
+    if (!expoPushToken) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message: "Expo push token is required",
+
+      });
+
+    }
+
+    // =========================
+    // FACULTY
+    // =========================
+
+    if (userRole === "FACULTY") {
+
+      await Faculty.findByIdAndUpdate(
+
+        userId,
+
+        {
+          expoPushToken,
+        }
+
+      );
+
+    }
+
+    // =========================
+    // USER
+    // STUDENT / HOD / PRINCIPAL
+    // =========================
+
+    else {
+
+      await User.findByIdAndUpdate(
+
+        userId,
+
+        {
+          expoPushToken,
+        }
+
+      );
+
+    }
+
+    res.json({
+
+      success: true,
+
+      message:
+        "Push token saved successfully",
+
+    });
+
+  } catch (error) {
+
+    console.log(
+      "SAVE PUSH TOKEN ERROR:",
+      error
+    );
+
+    res.status(500).json({
+
+      success: false,
+
+      message:
+        "Server Error",
+
+    });
+
+  }
+
+};

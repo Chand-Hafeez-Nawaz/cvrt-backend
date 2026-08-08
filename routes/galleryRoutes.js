@@ -34,7 +34,7 @@ router.post(
   roleMiddleware(
     "HOD",
     "PRINCIPAL",
-    "TEACHER"
+    "FACULTY"
   ),
 
   upload.array("files", 5),
@@ -55,7 +55,7 @@ router.get("/",
 // =========================
 
 router.get("/:department",
-  getDepartmentImages,deleteImage
+  getDepartmentImages
 );
 
 // DELETE IMAGE

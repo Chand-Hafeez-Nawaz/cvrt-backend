@@ -27,7 +27,11 @@ const UserSchema = new mongoose.Schema({
   mustChangePassword: {
     type: Boolean,
     default: false,
-  }
+  },
+  expoPushToken: {
+    type: String,
+    default: "",
+  },
 
 }, { timestamps: true });
 

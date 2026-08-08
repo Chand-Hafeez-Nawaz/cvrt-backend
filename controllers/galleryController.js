@@ -1,6 +1,12 @@
 const Gallery = require("../models/Gallery");
+const User = require("../models/User");
+const Faculty = require("../models/Faculty");
+const sendNotification = require("../utils/sendNotification");
 
-// Upload Image
+// =====================================
+// UPLOAD IMAGE
+// =====================================
+
 exports.uploadImage = async (req, res) => {
 
   try {
@@ -43,6 +49,200 @@ exports.uploadImage = async (req, res) => {
         uploadedImages
       );
 
+    // =====================================
+// SEND GALLERY NOTIFICATION
+// =====================================
+
+try {
+
+  let users = [];
+  let faculty = [];
+
+  const senderId =
+    req.user.id;
+
+  const senderRole =
+    req.user.role;
+
+  let departments = [department];
+
+  // =====================================
+  // CSE + AIML SHARE NOTIFICATIONS
+  // =====================================
+
+  if (department === "CSE") {
+    departments.push("AIML");
+  }
+
+  if (department === "AIML") {
+    departments.push("CSE");
+  }
+
+  // =====================================
+  // FIND USERS
+  // EXCLUDE SENDER IF USER COLLECTION
+  // =====================================
+
+  if (senderRole !== "FACULTY") {
+
+    users = await User.find({
+
+      _id: {
+        $ne: senderId
+      },
+
+      department: {
+        $in: departments
+      },
+
+      expoPushToken: {
+        $exists: true,
+        $ne: null
+      }
+
+    }).select("expoPushToken role");
+
+  } else {
+
+    users = await User.find({
+
+      department: {
+        $in: departments
+      },
+
+      expoPushToken: {
+        $exists: true,
+        $ne: null
+      }
+
+    }).select("expoPushToken role");
+
+  }
+
+  // =====================================
+  // FIND FACULTY
+  // EXCLUDE SENDER IF FACULTY
+  // =====================================
+
+  if (senderRole === "FACULTY") {
+
+    faculty = await Faculty.find({
+
+      _id: {
+        $ne: senderId
+      },
+
+      department: {
+        $in: departments
+      },
+
+      expoPushToken: {
+        $exists: true,
+        $ne: null
+      }
+
+    }).select("expoPushToken");
+
+  } else {
+
+    faculty = await Faculty.find({
+
+      department: {
+        $in: departments
+      },
+
+      expoPushToken: {
+        $exists: true,
+        $ne: null
+      }
+
+    }).select("expoPushToken");
+
+  }
+
+  // =====================================
+  // COLLECT TOKENS
+  // =====================================
+
+  const userTokens =
+    users.map(
+      user => user.expoPushToken
+    );
+
+  const facultyTokens =
+    faculty.map(
+      member => member.expoPushToken
+    );
+
+  const allTokens = [
+    ...userTokens,
+    ...facultyTokens
+  ];
+
+  // =====================================
+  // REMOVE DUPLICATES
+  // =====================================
+
+  const uniqueTokens =
+    [...new Set(allTokens)];
+
+  // =====================================
+  // SEND NOTIFICATION
+  // =====================================
+
+  if (uniqueTokens.length > 0) {
+
+    await sendNotification({
+
+      expoPushTokens:
+        uniqueTokens,
+
+      title:
+        "🖼️ New Gallery Update",
+
+      body:
+        `${images.length} new image${
+          images.length > 1 ? "s" : ""
+        } added to the ${department} Gallery.`,
+
+      data: {
+
+        type:
+          "GALLERY",
+
+        department,
+
+        imageCount:
+          images.length,
+
+        galleryId:
+          images[0]?._id?.toString() || ""
+
+      }
+
+    });
+
+  } else {
+
+    console.log(
+      "No users with push tokens found for gallery notification."
+    );
+
+  }
+
+} catch (notificationError) {
+
+  console.log(
+    "GALLERY NOTIFICATION ERROR:",
+    notificationError
+  );
+
+}
+
+    // =====================================
+    // RESPONSE
+    // =====================================
+
     res.status(201).json({
 
       success: true,
@@ -60,7 +260,8 @@ exports.uploadImage = async (req, res) => {
 
     res.status(500).json({
 
-      message: "Server Error"
+      message:
+        "Server Error"
 
     });
 
@@ -68,7 +269,10 @@ exports.uploadImage = async (req, res) => {
 
 };
 
-// Get All Images
+// =====================================
+// GET ALL IMAGES
+// =====================================
+
 exports.getImages = async (req, res) => {
 
   try {
@@ -89,14 +293,20 @@ exports.getImages = async (req, res) => {
     console.log(error);
 
     res.status(500).json({
-      message: "Server Error"
+
+      message:
+        "Server Error"
+
     });
 
   }
 
 };
 
-// Department Gallery
+// =====================================
+// DEPARTMENT GALLERY
+// =====================================
+
 exports.getDepartmentImages =
 async (req, res) => {
 
@@ -108,7 +318,9 @@ async (req, res) => {
     const images =
       await Gallery.find({
         department
-      }).sort({ createdAt: -1 });
+      }).sort({
+        createdAt: -1
+      });
 
     res.status(200).json({
 
@@ -122,14 +334,19 @@ async (req, res) => {
     console.log(error);
 
     res.status(500).json({
-      message: "Server Error"
+
+      message:
+        "Server Error"
+
     });
 
   }
 
 };
 
+// =====================================
 // DELETE IMAGE
+// =====================================
 
 exports.deleteImage =
 async (req, res) => {
@@ -156,7 +373,8 @@ async (req, res) => {
 
     res.status(500).json({
 
-      message: "Server Error"
+      message:
+        "Server Error"
 
     });
 

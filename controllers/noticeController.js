@@ -1,16 +1,19 @@
 const Notice = require("../models/Notice");
+const User = require("../models/User");
+const Faculty = require("../models/Faculty");
+const sendNotification = require("../utils/sendNotification");
 
 // ======================================
 // CREATE NOTICE
 // ======================================
 
 exports.createNotice = async (req, res) => {
-console.log("CREATE NOTICE API HIT");
+
+  console.log("CREATE NOTICE API HIT");
 
   try {
 
     const {
-
       title,
       description,
       department,
@@ -20,7 +23,6 @@ console.log("CREATE NOTICE API HIT");
       priority,
       visibility,
       isPinned
-
     } = req.body;
 
     // =========================
@@ -29,9 +31,27 @@ console.log("CREATE NOTICE API HIT");
 
     let fileUrl = "";
 
-if (req.file) {
+    if (req.file) {
+      fileUrl = req.file.path;
+    }
 
-  fileUrl = req.file.path;
+    // ======================================
+// ONLY_HODS CAN ONLY BE CREATED BY PRINCIPAL
+// ======================================
+
+if (
+  visibility === "ONLY_HODS" &&
+  req.user.role !== "PRINCIPAL"
+) {
+
+  return res.status(403).json({
+
+    success: false,
+
+    message:
+      "Only Principal can create ONLY_HODS notices"
+
+  });
 
 }
 
@@ -39,34 +59,270 @@ if (req.file) {
     // CREATE NOTICE
     // =========================
 
-     const notice = await Notice.create({
+    const notice = await Notice.create({
 
-  title,
+      title,
 
-  description,
+      description,
 
-  department,
+      department,
 
-  noticeType,
+      noticeType,
 
-  fileUrl,
+      fileUrl,
 
-  fileName:
-    req.file?.originalname || "",
+      fileName:
+        req.file?.originalname || "",
 
-  createdBy,
+      createdBy,
 
-  role,
+      role,
 
-  priority,
+      priority,
 
-  visibility:
-    visibility || "PUBLIC",
+      visibility:
+        visibility || "PUBLIC",
 
-  isPinned:
-    isPinned || false
+      isPinned:
+        isPinned || false
 
-});
+    });
+
+      const senderId = req.user.id;
+      const senderRole = req.user.role;
+
+    // =========================
+    // SEND NOTIFICATION
+    // =========================
+
+    try {
+
+      let users = [];
+      let faculty = [];
+
+      const finalVisibility =
+        visibility || "PUBLIC";
+
+      // =====================================
+      // PUBLIC + ALL
+      // =====================================
+
+      if (
+        finalVisibility === "PUBLIC" &&
+        department === "ALL"
+      ) {
+
+        users = await User.find({
+
+        _id: {
+          $ne: senderRole === "FACULTY"
+            ? null
+            : senderId
+        },
+
+        expoPushToken: {
+          $exists: true,
+          $ne: null
+        }
+
+      }).select("expoPushToken role");
+
+      faculty = await Faculty.find({
+
+        _id: {
+          $ne: senderRole === "FACULTY"
+            ? senderId
+            : null
+        },
+
+        expoPushToken: {
+          $exists: true,
+          $ne: null
+        }
+
+      }).select("expoPushToken");
+
+      }
+
+      // =====================================
+      // PUBLIC + DEPARTMENT
+      // =====================================
+
+      else if (
+        finalVisibility === "PUBLIC" &&
+        department !== "ALL"
+      ) {
+
+        let departments = [department];
+
+          if (department === "CSE") {
+            departments.push("AIML");
+          }
+
+        users = await User.find({
+
+          _id: {
+            $ne: senderRole === "FACULTY"
+              ? null
+              : senderId
+          },
+
+          department: {
+            $in: departments
+          },
+
+          expoPushToken: {
+            $exists: true,
+            $ne: null
+          }
+
+        }).select("expoPushToken role");
+
+        faculty = await Faculty.find({
+
+            _id: {
+              $ne: senderRole === "FACULTY"
+                ? senderId
+                : null
+            },
+
+            department: {
+              $in: departments
+            },
+
+            expoPushToken: {
+              $exists: true,
+              $ne: null
+            }
+
+          }).select("expoPushToken");
+
+        }
+
+      // =====================================
+      // ONLY HODS + ALL
+      // =====================================
+
+      else if (
+        finalVisibility === "ONLY_HODS" &&
+        department === "ALL"
+      ) {
+
+        users = await User.find({
+
+          role: "HOD",
+
+          expoPushToken: {
+            $exists: true,
+            $ne: null
+          }
+
+        }).select("expoPushToken");
+
+      }
+
+      // =====================================
+      // ONLY HODS + DEPARTMENT
+      // =====================================
+
+      else if (
+        finalVisibility === "ONLY_HODS" &&
+        department !== "ALL"
+      ) {
+
+        users = await User.find({
+
+          role: "HOD",
+
+          department,
+
+          expoPushToken: {
+            $exists: true,
+            $ne: null
+          }
+
+        }).select("expoPushToken");
+
+      }
+
+      // =====================================
+      // COLLECT TOKENS
+      // =====================================
+
+      const userTokens =
+        users.map(
+          user => user.expoPushToken
+        );
+
+      const facultyTokens =
+        faculty.map(
+          member => member.expoPushToken
+        );
+
+      const allTokens = [
+        ...new Set([
+          ...userTokens,
+          ...facultyTokens
+        ])
+      ];
+            // =====================================
+      // SEND NOTIFICATION
+      // =====================================
+
+      if (allTokens.length > 0) {
+
+        await sendNotification({
+
+          expoPushTokens: allTokens,
+
+          title:
+            `📢 ${title}`,
+
+          body:
+            description ||
+            "A new notice has been published.",
+
+          data: {
+
+            type: "NOTICE",
+
+            noticeId:
+              notice._id.toString(),
+
+            department:
+              department,
+
+            noticeType:
+              noticeType || "GENERAL"
+
+          }
+
+        });
+
+      } else {
+
+        console.log(
+          "No users with push tokens found for this notice."
+        );
+
+      }
+
+    } catch (notificationError) {
+
+      // IMPORTANT:
+      // Notification failure should NOT
+      // make notice creation fail.
+
+      console.log(
+        "NOTICE NOTIFICATION ERROR:",
+        notificationError
+      );
+
+    }
+
+    // =========================
+    // RESPONSE
+    // =========================
 
     res.status(201).json({
 
@@ -81,7 +337,10 @@ if (req.file) {
 
   } catch (error) {
 
-    console.log("CREATE NOTICE ERROR:", error);
+    console.log(
+      "CREATE NOTICE ERROR:",
+      error
+    );
 
     res.status(500).json({
 
@@ -112,6 +371,8 @@ exports.getNotices = async (req, res) => {
         createdAt: -1
 
       });
+
+
 
     res.status(200).json({
 
@@ -220,10 +481,6 @@ async (req, res) => {
         });
 
     }
-
-    // =====================================
-    // STUDENT / FACULTY
-    // =====================================
 
     // =====================================
 // STUDENT / FACULTY

@@ -158,6 +158,7 @@ router.put(
 router.get(
   "/faculty/:facultyId",
   authMiddleware,
+  roleMiddleware("FACULTY"),
   getFacultyComplaints
 );
 
