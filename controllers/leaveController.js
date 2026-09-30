@@ -573,6 +573,101 @@ exports.getHODLeaves = async (req, res) => {
 
 
 // =====================================
+// HOD - LEAVE HISTORY
+// =====================================
+
+exports.getHODLeaveHistory = async (req, res) => {
+
+  try {
+
+    if (req.user.role !== "HOD") {
+
+      return res.status(403).json({
+
+        success: false,
+
+        message:
+          "Only HOD can access leave history",
+
+      });
+
+    }
+
+    const leaves =
+      await Leave.find({
+
+        department:
+          req.user.department,
+
+        $or: [
+
+          {
+            status: "HOD_REJECTED",
+          },
+
+          {
+            status: "PENDING_PRINCIPAL",
+
+            hodActionBy: {
+              $ne: "",
+            },
+
+          },
+
+          {
+            status: "APPROVED",
+
+            hodActionBy: {
+              $ne: "",
+            },
+
+          },
+
+          {
+            status: "REJECTED",
+
+            hodActionBy: {
+              $ne: "",
+            },
+
+          },
+
+        ],
+
+      }).sort({
+
+        createdAt: -1,
+
+      });
+
+    res.status(200).json({
+
+      success: true,
+
+      leaves,
+
+    });
+
+  } catch (error) {
+
+    console.log(
+      "HOD LEAVE HISTORY ERROR:",
+      error
+    );
+
+    res.status(500).json({
+
+      success: false,
+
+      message: "Server Error",
+
+    });
+
+  }
+
+};
+
+// =====================================
 // HOD - APPROVE LEAVE
 // =====================================
 
@@ -854,6 +949,90 @@ async (req, res) => {
 
     console.log(
       "PRINCIPAL LEAVES ERROR:",
+      error
+    );
+
+    res.status(500).json({
+
+      success: false,
+
+      message: "Server Error",
+
+    });
+
+  }
+
+};
+
+
+// =====================================
+// PRINCIPAL - LEAVE HISTORY
+// =====================================
+
+exports.getPrincipalLeaveHistory =
+async (req, res) => {
+
+  try {
+
+    if (
+      req.user.role !==
+      "PRINCIPAL"
+    ) {
+
+      return res.status(403).json({
+
+        success: false,
+
+        message:
+          "Only Principal can access leave history",
+
+      });
+
+    }
+
+    const leaves =
+      await Leave.find({
+
+        $or: [
+
+          {
+            status: "APPROVED",
+
+            principalActionBy: {
+              $ne: "",
+            },
+
+          },
+
+          {
+            status: "REJECTED",
+
+            principalActionBy: {
+              $ne: "",
+            },
+
+          },
+
+        ],
+
+      }).sort({
+
+        createdAt: -1,
+
+      });
+
+    res.status(200).json({
+
+      success: true,
+
+      leaves,
+
+    });
+
+  } catch (error) {
+
+    console.log(
+      "PRINCIPAL LEAVE HISTORY ERROR:",
       error
     );
 

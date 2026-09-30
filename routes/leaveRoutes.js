@@ -8,10 +8,14 @@ const {
   getMyLeaves,
   updateMyLeave,
   deleteMyLeave,
+
   getHODLeaves,
+  getHODLeaveHistory,
   approveByHOD,
   rejectByHOD,
+
   getPrincipalLeaves,
+  getPrincipalLeaveHistory,
   approveByPrincipal,
   rejectByPrincipal,
 } = require("../controllers/leaveController");
@@ -60,6 +64,13 @@ router.get(
   getHODLeaves
 );
 
+// View HOD leave history
+router.get(
+  "/hod/history",
+  authMiddleware,
+  getHODLeaveHistory
+);
+
 // Approve leave
 router.put(
   "/hod/approve/:id",
@@ -84,6 +95,13 @@ router.get(
   "/principal",
   authMiddleware,
   getPrincipalLeaves
+);
+
+// View Principal leave history
+router.get(
+  "/principal/history",
+  authMiddleware,
+  getPrincipalLeaveHistory
 );
 
 // Approve leave
