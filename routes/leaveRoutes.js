@@ -6,6 +6,8 @@ const authMiddleware =
 const {
   applyLeave,
   getMyLeaves,
+  updateMyLeave,
+  deleteMyLeave,
   getHODLeaves,
   approveByHOD,
   rejectByHOD,
@@ -30,6 +32,20 @@ router.get(
   "/my",
   authMiddleware,
   getMyLeaves
+);
+
+// Edit my pending leave
+router.put(
+  "/:id",
+  authMiddleware,
+  updateMyLeave
+);
+
+// Delete my pending leave
+router.delete(
+  "/:id",
+  authMiddleware,
+  deleteMyLeave
 );
 
 

@@ -187,6 +187,328 @@ exports.getMyLeaves = async (req, res) => {
 
 
 // =====================================
+// FACULTY - EDIT LEAVE
+// =====================================
+
+exports.updateMyLeave = async (req, res) => {
+
+  try {
+
+    // Only Faculty can edit leave
+    if (req.user.role !== "FACULTY") {
+
+      return res.status(403).json({
+
+        success: false,
+
+        message:
+          "Only faculty can edit leave",
+
+      });
+
+    }
+
+    const { id } = req.params;
+
+    const {
+      leaveType,
+      startDate,
+      endDate,
+      reason,
+    } = req.body;
+
+    // =========================
+    // VALIDATION
+    // =========================
+
+    if (
+      !leaveType ||
+      !startDate ||
+      !endDate ||
+      !reason
+    ) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          "Please fill all fields",
+
+      });
+
+    }
+
+    // =========================
+    // FIND LEAVE
+    // =========================
+
+    const leave =
+      await Leave.findById(id);
+
+    if (!leave) {
+
+      return res.status(404).json({
+
+        success: false,
+
+        message:
+          "Leave request not found",
+
+      });
+
+    }
+
+    // =========================
+    // OWNERSHIP SECURITY
+    // =========================
+
+    if (
+      leave.facultyId.toString() !==
+      req.user._id.toString()
+    ) {
+
+      return res.status(403).json({
+
+        success: false,
+
+        message:
+          "You cannot edit this leave request",
+
+      });
+
+    }
+
+    // =========================
+    // STATUS SECURITY
+    // =========================
+
+    if (
+      leave.status !==
+      "PENDING_HOD"
+    ) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          "Only pending HOD leave requests can be edited",
+
+      });
+
+    }
+
+    // =========================
+    // DATE VALIDATION
+    // =========================
+
+    const start =
+      new Date(startDate);
+
+    const end =
+      new Date(endDate);
+
+    if (
+      isNaN(start.getTime()) ||
+      isNaN(end.getTime())
+    ) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          "Invalid date",
+
+      });
+
+    }
+
+    if (end < start) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          "End date cannot be before start date",
+
+      });
+
+    }
+
+    // =========================
+    // UPDATE ONLY ALLOWED FIELDS
+    // =========================
+
+    leave.leaveType =
+      leaveType.trim();
+
+    leave.startDate =
+      start;
+
+    leave.endDate =
+      end;
+
+    leave.reason =
+      reason.trim();
+
+    await leave.save();
+
+    res.status(200).json({
+
+      success: true,
+
+      message:
+        "Leave request updated successfully",
+
+      leave,
+
+    });
+
+  } catch (error) {
+
+    console.log(
+      "UPDATE LEAVE ERROR:",
+      error
+    );
+
+    res.status(500).json({
+
+      success: false,
+
+      message:
+        "Server Error",
+
+    });
+
+  }
+
+};
+
+
+// =====================================
+// FACULTY - DELETE LEAVE
+// =====================================
+
+exports.deleteMyLeave = async (req, res) => {
+
+  try {
+
+    // Only Faculty can delete leave
+    if (req.user.role !== "FACULTY") {
+
+      return res.status(403).json({
+
+        success: false,
+
+        message:
+          "Only faculty can delete leave",
+
+      });
+
+    }
+
+    const { id } = req.params;
+
+    // =========================
+    // FIND LEAVE
+    // =========================
+
+    const leave =
+      await Leave.findById(id);
+
+    if (!leave) {
+
+      return res.status(404).json({
+
+        success: false,
+
+        message:
+          "Leave request not found",
+
+      });
+
+    }
+
+    // =========================
+    // OWNERSHIP SECURITY
+    // =========================
+
+    if (
+      leave.facultyId.toString() !==
+      req.user._id.toString()
+    ) {
+
+      return res.status(403).json({
+
+        success: false,
+
+        message:
+          "You cannot delete this leave request",
+
+      });
+
+    }
+
+    // =========================
+    // STATUS SECURITY
+    // =========================
+
+    if (
+      leave.status !==
+      "PENDING_HOD"
+    ) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          "Only pending HOD leave requests can be deleted",
+
+      });
+
+    }
+
+    // =========================
+    // DELETE
+    // =========================
+
+    await Leave.findByIdAndDelete(id);
+
+    res.status(200).json({
+
+      success: true,
+
+      message:
+        "Leave request deleted successfully",
+
+    });
+
+  } catch (error) {
+
+    console.log(
+      "DELETE LEAVE ERROR:",
+      error
+    );
+
+    res.status(500).json({
+
+      success: false,
+
+      message:
+        "Server Error",
+
+    });
+
+  }
+
+};
+
+
+// =====================================
 // HOD - VIEW PENDING LEAVES
 // =====================================
 
