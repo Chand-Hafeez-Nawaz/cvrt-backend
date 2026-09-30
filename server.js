@@ -12,6 +12,8 @@ require("./routes/complaintRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const facultyRoutes =
 require("./routes/facultyRoutes");
+const leaveRoutes =
+  require("./routes/leaveRoutes");
 
 
 app.use(cors());
@@ -20,6 +22,8 @@ app.use("/api/gallery",galleryRoutes);
 app.use("/api/complaints",complaintRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/faculty",facultyRoutes);
+app.use(
+  "/api/leave",leaveRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("MongoDB Connected"))
